@@ -1,36 +1,8 @@
-1 WALKING
-2 WALKING_UPSTAIRS
-3 WALKING_DOWNSTAIRS
-4 SITTING
-5 STANDING
-6 LAYING
+# This R script was created and tested on a MAC computer.
+# The data folder needs to be located in your working directory and
+# have the name "UCI HAR Dataset" for the script to work properly.
 
-summarise(by_subject_activity, mean($col1))
-
-Option A.
-subject |  activity |  sd | mean
-
-1 "WALKING" -0.319105810200331 0.452722654264638
-2 "WALKING" -0.385708093716054 0.471751410540144
-
-filter() (and slice())
-arrange()
-select() (and rename())
-distinct()
-mutate() (and transmute())
-summarise()
-sample_n() and sample_frac()
-
-- 'features_info.txt': Shows information about the variables used on the feature vector.
-- 'features.txt': List of all features.
-- 'activity_labels.txt': Links the class labels with their activity name.
-- 'train/X_train.txt': Training set.
-- 'train/y_train.txt': Training labels.
-- 'test/X_test.txt': Test set.
-- 'test/y_test.txt': Test labels.
-
-(if activity column == 1 = "WALKING" and so on),
-
+# Assignment objectives
 You should create one R script called run_analysis.R that does the following. 
 1. Merges the training and the test sets to create one data set.
 2. Extracts only the measurements on the mean and standard deviation for each measurement. 
@@ -38,104 +10,122 @@ You should create one R script called run_analysis.R that does the following.
 4. Appropriately labels the data set with descriptive variable names. 
 5. From the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject.
 
-# Import all variable labels for test and train data sets
+# Ok here we go...
+# Let's first read in the features.txt file
 
-features <- read.table("UCI HAR Dataset/features.txt") # for MAC
+      features <- read.table("UCI HAR Dataset/features.txt") 
 
-# Subset of mean measurements
-subset_mean <- features[grep("mean()", features$V2, fixed = TRUE), ] # fixed = TRUE will do an exact match / FALSE = character match
+# Now, I want to figure out columns to extract from the test and training data sets.
+# We know we want the "mean" and "standard deviation" measurements, so I will 
+# search the newly created "features" object and extract two subsets 
+# based on the character strings "mean()" and "std()"
 
-# Subset of standard deviation measurements
-subset_std <- features[grep("std()", features$V2, fixed = TRUE), ]
+      # extract a subset of mean measurement labels from "features"
+      subset_mean <- features[grep("mean()", features$V2, fixed = TRUE), ] 
 
+      # extract a subset of standard deviation measurement labels from "features"     
+      subset_std <- features[grep("std()", features$V2, fixed = TRUE), ]
 
-#goal is to create one table -> |subject|session|activity|ME1|ME2|ME3|ME4|
-# use select() to combine into one table
-# use two columns to extract data from X_test
-# select total$V1 from X_test
-# Give new labels to the measurment variables
-
-# Import test data ---------------------------------------------------------------------------------------
-
-# test subjects 2-24
-subject_test <- read.table("UCI HAR Dataset/test/subject_test.txt")
-# test results - 561 variables
-x_test <- read.table("UCI HAR Dataset/test/X_test.txt")
-# test actyivity labels - 6 variables
-y_test <- read.table("UCI HAR Dataset/test/y_test.txt")
+      # then I will combine the mean and std measurement label subsets into one table
+      subset_cmb <- rbind(subset_mean, subset_std)
 
 
-#Import train data ------------------------------------------------------------------------------------------
+# Let's import the remaining test and training data files
 
-# subjects 1-30
-subject_train <- read.table("UCI HAR Dataset/train/subject_train.txt")
-# training set - 561 variables
-x_train <- read.table("UCI HAR Dataset/train/X_train.txt")
-# training labels
-y_train <- read.table("UCI HAR Dataset/train/y_train.txt")
+# Testing data --------------------------------------------------------------------
+
+      # get test subject IDs - 1 variable 
+      subject_test <- read.table("UCI HAR Dataset/test/subject_test.txt")
+
+      # get test data measurements - 561 variables
+      x_test <- read.table("UCI HAR Dataset/test/X_test.txt")
+
+      # get test actyivity labels codes - 1 variable
+      y_test <- read.table("UCI HAR Dataset/test/y_test.txt")
 
 
-# Combine mean and std features 
-subset_cmb <- rbind(subset_mean, subset_std)
+# Training data -------------------------------------------------------------------
 
-# convert TESTING data df to dplyr df - makes a bit easier
-x_test <- tbl_df(x_test)
-# convert TRAINING data df to dplyr df
-x_train <- tbl_df(x_train)
+      # get training subjects IDs - 1 variable
+      subject_train <- read.table("UCI HAR Dataset/train/subject_train.txt")
 
-# convert activity label lists to dplyr df 
-y_test <- tbl_df(y_test)
-y_train <- table_df(y_train)
+      # get training data measurements - 561 variables
+      x_train <- read.table("UCI HAR Dataset/train/X_train.txt")
 
-# Now we need to select only the subset cmb variables from the test dataset (x_test)
-tester <- select(x_test, subset_cmb$V1)
-# now we do the same for the training dataset (x_train)
-trainer <- select(x_train, subset_cmb$V1)
+      # get training label codes - 1 variable
+      y_train <- read.table("UCI HAR Dataset/train/y_train.txt")
 
-# now we need to bind the activity lables to filtered test subset data
-test_bind <- cbind(y_test, tester)
-train_bind <- cbind(y_train, trainer)
+# Now I'll start putting together the final test and training dataframes.
 
-# now we need to bind subjects to the those two tables
+# I'll use just the "subset_cmb" object and extract the mean and 
+# standard deviation columns from the test and training dataframes that have 561 columns
+# Which will reduce it to 66 columns.
+      
+      x_test <- select(x_test, subset_cmb$V1)
+      x_train <- select(x_train, subset_cmb$V1)
 
-test_bind2 <- cbind(subject_test, test_bind)
-train_bind2 <- cbind(subject_train, train_bind)
+# Let's now add the activity labels using cbind to both those new test and training tables.  
+      
+      test_bind <- cbind(y_test, x_test)
+      train_bind <- cbind(y_train, x_train)
 
-# Now the measurement variables only include the mean and std values, 
-# and the the subjects for test and train are attached to those new dataframes
-final_table <- rbind(test_bind2, train_bind2)
+# Then we can add the subject IDs to both those tables, again using cbind. 
 
-#cleanup features for new variable names
+      test_bind2 <- cbind(subject_test, test_bind)
+      train_bind2 <- cbind(subject_train, train_bind)
 
-new_var_names <- gsub("\\(\\)","", subset_cmb$V2)
-new_var_names <- gsub("\\-","", new_var_names)
+# I now have two tables for test and training structured 
+# like this --> | subject | activity | ME1 | ME2 | ME3 | ME4 ...and so on.
 
-# create vectors for subject and activity column names
-subject_label <- "subject"
-activity_label <- "activity"
+# Now I can combine both those tables (test and training) into one.
 
-# combine vectors
-final_column_labels <- c(subject_label,activity_label,new_var_names)
-# rename variables in final table
-colnames(final_table) <- final_column_labels
+      final_table <- rbind(test_bind2, train_bind2)
+
+# Next I want to clean up the column names and remove the parenthesis and dashes from the final table
+
+      new_var_names <- gsub("\\(\\)","", subset_cmb$V2)
+      new_var_names <- gsub("\\-","", new_var_names)
+
+# create vectors for first two column names
+      
+      subject_label <- "subject"
+      activity_label <- "activity"
+
+# combine all the column names
+      
+      final_column_labels <- c(subject_label,activity_label,new_var_names)
+
+# rename the column names in the final table
+      
+      colnames(final_table) <- final_column_labels
 
 #convert activity table to character to avoid cohersion errors
-final_table$activity <- as.character(final_table$activity)
-# convert all activity code numbers to text labels
-final_table$activity[final_table$activity %in% "1"] <- "walking"
-final_table$activity[final_table$activity %in% "2"] <- "walking_up"
-final_table$activity[final_table$activity %in% "3"] <- "walking_dn"
-final_table$activity[final_table$activity %in% "4"] <- "sitting"
-final_table$activity[final_table$activity %in% "5"] <- "standing"
-final_table$activity[final_table$activity %in% "6"] <- "laying"
-summer <- final_table
-summer <- tbl_df(final_table)
-#Apply one or more functions to one or more columns. 
-#Grouping variables are always excluded from modification.
-summer%>%group_by(subject,activity)%>%summarise_each(funs(mean))
-df %>% group_by(grp) %>% summarise_each(funs(mean))
+      
+      final_table$activity <- as.character(final_table$activity)
 
-> sum(tested3[,1])
-[1] 11.07991
-> 11.07991/50
-[1] 0.2215982
+# convert all activity code numbers to text labels
+      
+      final_table$activity[final_table$activity %in% "1"] <- "walking"
+      final_table$activity[final_table$activity %in% "2"] <- "walking_up"
+      final_table$activity[final_table$activity %in% "3"] <- "walking_dn"
+      final_table$activity[final_table$activity %in% "4"] <- "sitting"
+      final_table$activity[final_table$activity %in% "5"] <- "standing"
+      final_table$activity[final_table$activity %in% "6"] <- "laying"
+
+# Convert to dplyr dataframe 
+      
+      final_table <- tbl_df(final_table)
+
+# Finally, we'll group everything by the subject and activity columns and 
+# apply the summarise_each function to calculate the mean 
+      
+      tidy_data <- final_table%>%group_by(subject,activity)%>%summarise_each(funs(mean))
+
+# Let's take a look at the final output
+print(tidy_data)
+
+
+# sum(tested3[,1])
+# [1] 11.07991
+# 11.07991/50
+# [1] 0.2215982
