@@ -1,6 +1,5 @@
 ==================================================================
 Getting and Cleaning Data Course Project
-============================================
 Course ID: getdata-010
 -----------------------------
 Created by R. Bridgwater
